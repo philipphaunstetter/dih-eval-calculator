@@ -14,23 +14,73 @@ if (isInMiro) {
     // Running in Miro - wait for icon click
     miro.board.ui.on('icon:click', async () => {
         try {
-            // Get current viewport center
+            // Get all items on the board
+            const allItems = await miro.board.get();
+            
+            // Get current viewport
             const viewport = await miro.board.viewport.get();
-            const center = {
+            
+            // Default position (viewport center)
+            let position = {
                 x: viewport.x + viewport.width / 2,
                 y: viewport.y + viewport.height / 2
             };
+
+            // Find empty space
+            if (allItems.length > 0) {
+                // Get the rightmost item
+                const rightmostItem = allItems.reduce((max, item) => {
+                    const itemRight = item.x + (item.width || 0) / 2;
+                    return itemRight > max ? itemRight : max;
+                }, viewport.x);
+
+                // Get the bottommost item
+                const bottommostItem = allItems.reduce((max, item) => {
+                    const itemBottom = item.y + (item.height || 0) / 2;
+                    return itemBottom > max ? itemBottom : max;
+                }, viewport.y);
+
+                // Position the new table to the right or below existing content
+                if (rightmostItem + 900 < viewport.x + viewport.width) {
+                    // Space available on the right
+                    position = {
+                        x: rightmostItem + 450,
+                        y: viewport.y + viewport.height / 2
+                    };
+                } else {
+                    // Position below
+                    position = {
+                        x: viewport.x + viewport.width / 2,
+                        y: bottommostItem + 250
+                    };
+                }
+            }
+
+            // Create a frame at the found position
+            const frame = await miro.board.createFrame({
+                title: 'Dynamic Table Calculator',
+                x: position.x,
+                y: position.y,
+                width: 800,
+                height: 400,
+                style: {
+                    fillColor: '#ffffff'
+                }
+            });
 
             // Create header cells
             const headers = ['Definition', 'Weight (%)', 'Tool 1', 'Points'];
             const cellWidth = 180;
             const cellHeight = 40;
-            const startX = center.x - (headers.length * cellWidth) / 2;
-            const startY = center.y - cellHeight;
+            const startX = frame.x - (headers.length * cellWidth) / 2;
+            const startY = frame.y - frame.height / 2 + cellHeight;
 
             // Create header row
+            const headerShapes = [];
+            const headerTexts = [];
+
             for (let i = 0; i < headers.length; i++) {
-                await miro.board.createShape({
+                const shape = await miro.board.createShape({
                     type: 'rectangle',
                     x: startX + (i * cellWidth),
                     y: startY,
@@ -41,8 +91,9 @@ if (isInMiro) {
                         borderColor: '#ddd'
                     }
                 });
+                headerShapes.push(shape);
 
-                await miro.board.createText({
+                const text = await miro.board.createText({
                     content: headers[i],
                     x: startX + (i * cellWidth),
                     y: startY,
@@ -52,62 +103,15 @@ if (isInMiro) {
                         fontWeight: 'bold'
                     }
                 });
+                headerTexts.push(text);
+
+                // Add items to frame
+                await frame.add(shape);
+                await frame.add(text);
             }
 
-            // Create first data row
-            const rowY = startY + cellHeight;
-            for (let i = 0; i < headers.length; i++) {
-                await miro.board.createShape({
-                    type: 'rectangle',
-                    x: startX + (i * cellWidth),
-                    y: rowY,
-                    width: cellWidth,
-                    height: cellHeight,
-                    style: {
-                        fillColor: '#ffffff',
-                        borderColor: '#ddd'
-                    }
-                });
-
-                // Add input fields for the first row
-                if (i === 0) {
-                    await miro.board.createText({
-                        content: 'Click to edit',
-                        x: startX + (i * cellWidth),
-                        y: rowY,
-                        width: cellWidth,
-                        style: { textAlign: 'left' }
-                    });
-                } else if (i === 1) {
-                    await miro.board.createText({
-                        content: '0',
-                        x: startX + (i * cellWidth),
-                        y: rowY,
-                        width: cellWidth,
-                        style: { textAlign: 'right' }
-                    });
-                } else if (i === 2) {
-                    await miro.board.createText({
-                        content: '1',
-                        x: startX + (i * cellWidth),
-                        y: rowY,
-                        width: cellWidth,
-                        style: { textAlign: 'right' }
-                    });
-                } else {
-                    await miro.board.createText({
-                        content: '0.00',
-                        x: startX + (i * cellWidth),
-                        y: rowY,
-                        width: cellWidth,
-                        style: { textAlign: 'right' }
-                    });
-                }
-            }
-
-            // Select all created elements to show them in viewport
-            const allItems = await miro.board.get();
-            await miro.board.viewport.zoomTo(allItems);
+            // Update viewport to show the created content
+            await miro.board.viewport.zoomTo(frame);
 
         } catch (error) {
             console.error('Error creating table:', error);
