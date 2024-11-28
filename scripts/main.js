@@ -11,7 +11,6 @@ window.miro = window.miro || {
 const isInMiro = window.miro.board && typeof window.miro.board.ui.on === 'function';
 
 if (isInMiro) {
-    // Running in Miro - wait for icon click
     miro.board.ui.on('icon:click', async () => {
         try {
             // Get all items on the board
@@ -68,53 +67,25 @@ if (isInMiro) {
                 }
             });
 
-            // Create header cells
+            // Create grid header
             const headers = ['Definition', 'Weight (%)', 'Tool 1', 'Points'];
             const cellWidth = 180;
             const cellHeight = 40;
-            const startX = frame.x - (headers.length * cellWidth) / 2;
-            const startY = frame.y - frame.height / 2 + cellHeight;
 
-            // Create header row
-            const headerShapes = [];
-            const headerTexts = [];
+            const gridManager = new GridManager(calculationEngine);
+            const toolManager = new ToolManager(calculationEngine);
 
-            for (let i = 0; i < headers.length; i++) {
-                const shape = await miro.board.createShape({
-                    type: 'rectangle',
-                    x: startX + (i * cellWidth),
-                    y: startY,
-                    width: cellWidth,
-                    height: cellHeight,
-                    style: {
-                        fillColor: '#f5f5f5',
-                        borderColor: '#ddd'
-                    }
-                });
-                headerShapes.push(shape);
+            // Create header cells
+            const headerRow = await createHeaderRow(headers, position.x, position.y, cellWidth, cellHeight);
+            
+            // Add initial data row
+            await gridManager.addRow(position.x, position.y + cellHeight, cellWidth, cellHeight);
 
-                const text = await miro.board.createText({
-                    content: headers[i],
-                    x: startX + (i * cellWidth),
-                    y: startY,
-                    width: cellWidth,
-                    style: {
-                        textAlign: 'center',
-                        fontWeight: 'bold'
-                    }
-                });
-                headerTexts.push(text);
-
-                // Add items to frame
-                await frame.add(shape);
-                await frame.add(text);
-            }
-
-            // Update viewport to show the created content
-            await miro.board.viewport.zoomTo(frame);
+            // Add controls as separate shapes
+            await createControls(position.x, position.y - cellHeight, gridManager, toolManager);
 
         } catch (error) {
-            console.error('Error creating table:', error);
+            console.error('Error creating grid:', error);
         }
     });
 } else {
@@ -144,4 +115,12 @@ async function init() {
         // If in Miro, we need to sync the table content
         await miro.board.sync();
     }
+}
+
+async function createHeaderRow(headers, x, y, cellWidth, cellHeight) {
+    // Create header cells using shapes and text
+}
+
+async function createControls(x, y, gridManager, toolManager) {
+    // Create control buttons as interactive shapes
 } 
