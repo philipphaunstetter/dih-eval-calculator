@@ -11,9 +11,6 @@ window.miro = window.miro || {
 const GRID_CONFIG = {
     cellWidth: 180,
     cellHeight: 60,
-    headerColor: '#E6E6E6',
-    dataColor: '#FFFFFF',
-    buttonColor: '#4262FF',
     spacing: 2,
     fontSize: 14
 };
@@ -39,33 +36,25 @@ async function createTableStructure(position) {
 
     // Create header cells
     for (let i = 0; i < headers.length; i++) {
-        // Create header background
-        const headerCell = await miro.board.createShape({
-            type: 'rectangle',
+        // Create header shape (rectangle)
+        const headerShape = await miro.board.createShape({
+            type: 'shape',
+            shape: 'rectangle',
             x: position.x + (i * (GRID_CONFIG.cellWidth + GRID_CONFIG.spacing)),
             y: position.y,
             width: GRID_CONFIG.cellWidth,
             height: GRID_CONFIG.cellHeight,
             style: {
-                fillColor: GRID_CONFIG.headerColor,
-                borderColor: '#D0D0D0'
-            }
-        });
-
-        // Create header text
-        const headerText = await miro.board.createText({
-            content: headers[i],
-            x: headerCell.x,
-            y: headerCell.y,
-            width: GRID_CONFIG.cellWidth,
-            style: {
+                fillColor: '#E6E6E6',
+                borderColor: '#D0D0D0',
                 textAlign: 'center',
                 fontSize: GRID_CONFIG.fontSize,
-                bold: true
-            }
+                fontFamily: 'arial',
+                textAlignVertical: 'middle'
+            },
+            content: headers[i]
         });
-
-        elements.push(headerCell, headerText);
+        elements.push(headerShape);
     }
 
     // Create first data row
@@ -73,67 +62,77 @@ async function createTableStructure(position) {
     const rowY = position.y + GRID_CONFIG.cellHeight + GRID_CONFIG.spacing;
 
     for (let i = 0; i < defaultValues.length; i++) {
-        // Create cell background
-        const dataCell = await miro.board.createShape({
-            type: 'rectangle',
+        const dataShape = await miro.board.createShape({
+            type: 'shape',
+            shape: 'rectangle',
             x: position.x + (i * (GRID_CONFIG.cellWidth + GRID_CONFIG.spacing)),
             y: rowY,
             width: GRID_CONFIG.cellWidth,
             height: GRID_CONFIG.cellHeight,
             style: {
-                fillColor: GRID_CONFIG.dataColor,
-                borderColor: '#D0D0D0'
-            }
-        });
-
-        // Create cell text
-        const dataText = await miro.board.createText({
-            content: defaultValues[i],
-            x: dataCell.x,
-            y: dataCell.y,
-            width: GRID_CONFIG.cellWidth,
-            style: {
+                fillColor: '#FFFFFF',
+                borderColor: '#D0D0D0',
                 textAlign: i === 0 ? 'left' : 'right',
-                fontSize: GRID_CONFIG.fontSize
-            }
+                fontSize: GRID_CONFIG.fontSize,
+                fontFamily: 'arial',
+                textAlignVertical: 'middle'
+            },
+            content: defaultValues[i]
         });
-
-        elements.push(dataCell, dataText);
+        elements.push(dataShape);
     }
 
     // Create "Add Row" button
     const buttonWidth = 100;
-    const buttonHeight = 40;
     const buttonY = position.y - GRID_CONFIG.cellHeight;
 
     const addButton = await miro.board.createShape({
-        type: 'rectangle',
+        type: 'shape',
+        shape: 'round_rectangle',
         x: position.x,
         y: buttonY,
         width: buttonWidth,
-        height: buttonHeight,
+        height: 40,
         style: {
-            fillColor: GRID_CONFIG.buttonColor,
-            borderColor: 'transparent'
-        }
-    });
-
-    const buttonText = await miro.board.createText({
-        content: '+ Add Row',
-        x: position.x,
-        y: buttonY,
-        width: buttonWidth,
-        style: {
+            fillColor: '#4262FF',
+            borderColor: 'transparent',
             textAlign: 'center',
-            color: '#FFFFFF',
-            fontSize: GRID_CONFIG.fontSize
-        }
+            fontSize: GRID_CONFIG.fontSize,
+            fontFamily: 'arial',
+            textAlignVertical: 'middle',
+            color: '#FFFFFF'
+        },
+        content: '+ Add Row'
     });
 
-    elements.push(addButton, buttonText);
+    elements.push(addButton);
 
-    // Group all elements
-    await miro.board.group(elements);
+    // Set up click handler for Add Row button
+    addButton.on('click', async () => {
+        const rowCount = (elements.length - 5) / 4; // Exclude header and button
+        const newRowY = rowY + (rowCount * (GRID_CONFIG.cellHeight + GRID_CONFIG.spacing));
+        
+        for (let i = 0; i < defaultValues.length; i++) {
+            const newCell = await miro.board.createShape({
+                type: 'shape',
+                shape: 'rectangle',
+                x: position.x + (i * (GRID_CONFIG.cellWidth + GRID_CONFIG.spacing)),
+                y: newRowY,
+                width: GRID_CONFIG.cellWidth,
+                height: GRID_CONFIG.cellHeight,
+                style: {
+                    fillColor: '#FFFFFF',
+                    borderColor: '#D0D0D0',
+                    textAlign: i === 0 ? 'left' : 'right',
+                    fontSize: GRID_CONFIG.fontSize,
+                    fontFamily: 'arial',
+                    textAlignVertical: 'middle'
+                },
+                content: defaultValues[i]
+            });
+            elements.push(newCell);
+        }
+    });
 
     // Update viewport to show all elements
     await miro.board.viewport.zoomTo(elements);
