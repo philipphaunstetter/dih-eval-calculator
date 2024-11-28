@@ -7,103 +7,152 @@ window.miro = window.miro || {
     },
 };
 
+// Grid configuration
+const GRID_CONFIG = {
+    cellWidth: 180,
+    cellHeight: 60,
+    headerColor: 'gray',
+    dataColor: 'light_yellow',
+    buttonColor: 'blue',
+    spacing: 5
+};
+
 // Check if we're running in Miro or standalone
 const isInMiro = window.miro.board && typeof window.miro.board.ui.on === 'function';
 
 if (isInMiro) {
     miro.board.ui.on('icon:click', async () => {
         try {
-            // Get current viewport
             const viewport = await miro.board.viewport.get();
-            
-            // Default position (viewport center)
-            let position = {
-                x: viewport.x + viewport.width / 2,
-                y: viewport.y + viewport.height / 2
-            };
-
-            // Create header cells using sticky notes
-            const headers = ['Definition', 'Weight (%)', 'Tool 1', 'Points'];
-            const cellWidth = 180;
-            const cellHeight = 40;
-            const startX = position.x - (headers.length * cellWidth) / 2;
-            const startY = position.y;
-
-            // Create header row using sticky notes
-            for (let i = 0; i < headers.length; i++) {
-                await miro.board.createStickyNote({
-                    content: headers[i],
-                    x: startX + (i * cellWidth),
-                    y: startY,
-                    width: cellWidth,
-                    style: {
-                        fillColor: 'gray',
-                        textAlign: 'center',
-                        textAlignVertical: 'middle'
-                    }
-                });
-            }
-
-            // Create first data row
-            const rowY = startY + cellHeight;
-            await miro.board.createStickyNote({
-                content: 'Click to edit',
-                x: startX,
-                y: rowY,
-                width: cellWidth,
-                style: {
-                    fillColor: 'light_yellow'
-                }
-            });
-
-            await miro.board.createStickyNote({
-                content: '0',
-                x: startX + cellWidth,
-                y: rowY,
-                width: cellWidth,
-                style: {
-                    fillColor: 'light_yellow'
-                }
-            });
-
-            await miro.board.createStickyNote({
-                content: '1',
-                x: startX + (2 * cellWidth),
-                y: rowY,
-                width: cellWidth,
-                style: {
-                    fillColor: 'light_yellow'
-                }
-            });
-
-            await miro.board.createStickyNote({
-                content: '0.00',
-                x: startX + (3 * cellWidth),
-                y: rowY,
-                width: cellWidth,
-                style: {
-                    fillColor: 'light_yellow'
-                }
-            });
-
-            // Create "Add Row" button as a sticky note
-            await miro.board.createStickyNote({
-                content: '+ Add Row',
-                x: startX,
-                y: startY - cellHeight,
-                width: 100,
-                style: {
-                    fillColor: 'blue',
-                    textColor: 'white'
-                }
-            });
-
-            // Update viewport to show all created items
-            const allItems = await miro.board.get();
-            await miro.board.viewport.zoomTo(allItems);
-
+            const position = calculateInitialPosition(viewport);
+            const grid = await createInitialGrid(position);
+            await setupGridInteractivity(grid);
+            await miro.board.viewport.zoomTo(grid.getAllElements());
         } catch (error) {
             console.error('Error creating grid:', error);
+        }
+    });
+}
+
+async function createInitialGrid(position) {
+    const headers = ['Definition', 'Weight (%)', 'Tool 1', 'Points'];
+    const grid = new GridStructure(position, GRID_CONFIG);
+
+    // Create header row
+    const headerRow = await grid.addRow(headers, true);
+
+    // Create first data row with default values
+    const defaultValues = ['Click to edit', '0', '1', '0.00'];
+    const dataRow = await grid.addRow(defaultValues, false);
+
+    // Create control buttons
+    await grid.addControlButton('+ Add Row', position.x, position.y - GRID_CONFIG.cellHeight);
+
+    return grid;
+}
+
+class GridStructure {
+    constructor(position, config) {
+        this.position = position;
+        this.config = config;
+        this.elements = [];
+        this.rows = [];
+    }
+
+    async addRow(values, isHeader) {
+        const rowY = this.position.y + (this.rows.length * (this.config.cellHeight + this.config.spacing));
+        const row = [];
+
+        for (let i = 0; i < values.length; i++) {
+            // Create background shape
+            const shape = await miro.board.createShape({
+                type: 'rectangle',
+                x: this.position.x + (i * (this.config.cellWidth + this.config.spacing)),
+                y: rowY,
+                width: this.config.cellWidth,
+                height: this.config.cellHeight,
+                style: {
+                    fillColor: isHeader ? this.config.headerColor : this.config.dataColor,
+                    borderColor: 'transparent'
+                }
+            });
+
+            // Create text widget
+            const text = await miro.board.createText({
+                content: values[i],
+                x: shape.x,
+                y: shape.y,
+                width: this.config.cellWidth,
+                style: {
+                    textAlign: 'center',
+                    verticalAlign: 'middle',
+                    fontSize: isHeader ? 14 : 12,
+                    bold: isHeader
+                }
+            });
+
+            row.push({ shape, text });
+            this.elements.push(shape, text);
+        }
+
+        this.rows.push(row);
+        return row;
+    }
+
+    async addControlButton(label, x, y) {
+        const button = await miro.board.createShape({
+            type: 'rectangle',
+            x: x,
+            y: y,
+            width: 100,
+            height: 40,
+            style: {
+                fillColor: this.config.buttonColor,
+                borderColor: 'transparent'
+            }
+        });
+
+        const text = await miro.board.createText({
+            content: label,
+            x: x,
+            y: y,
+            width: 100,
+            style: {
+                textAlign: 'center',
+                verticalAlign: 'middle',
+                color: 'white',
+                fontSize: 12,
+                bold: true
+            }
+        });
+
+        this.elements.push(button, text);
+        return { button, text };
+    }
+
+    getAllElements() {
+        return this.elements;
+    }
+}
+
+function calculateInitialPosition(viewport) {
+    return {
+        x: viewport.x + viewport.width / 2,
+        y: viewport.y + viewport.height / 2
+    };
+}
+
+async function setupGridInteractivity(grid) {
+    // Add click handlers for buttons and cells
+    grid.getAllElements().forEach(element => {
+        if (element.type === 'shape') {
+            element.on('click', async () => {
+                // Handle click events
+                if (element.style.fillColor === GRID_CONFIG.buttonColor) {
+                    // It's a button - add new row
+                    await grid.addRow(['New Item', '0', '1', '0.00'], false);
+                }
+            });
         }
     });
 } 
