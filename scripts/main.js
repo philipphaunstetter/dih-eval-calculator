@@ -30,6 +30,35 @@ const BUTTON_CONFIG = {
     fontSize: 14
 };
 
+// Add this after the BUTTON_CONFIG
+const SHAPE_REGISTRY = {
+    buttons: {},
+    cells: {},
+    registerButton: function(id, type) {
+        this.buttons[id] = type;
+    },
+    registerCell: function(id, row, col) {
+        if (!this.cells[row]) this.cells[row] = {};
+        this.cells[row][col] = id;
+    },
+    isButton: function(id) {
+        return this.buttons[id] !== undefined;
+    },
+    getButtonType: function(id) {
+        return this.buttons[id];
+    },
+    getCellPosition: function(id) {
+        for (let row in this.cells) {
+            for (let col in this.cells[row]) {
+                if (this.cells[row][col] === id) {
+                    return { row: parseInt(row), col: parseInt(col) };
+                }
+            }
+        }
+        return null;
+    }
+};
+
 // Check if we're running in Miro or standalone
 const isInMiro = window.miro.board && typeof window.miro.board.ui.on === 'function';
 
@@ -83,11 +112,7 @@ async function createTableStructure(position) {
                 fontFamily: 'arial',
                 textAlignVertical: 'middle'
             },
-            content: headers[i],
-            metadata: {
-                type: 'header',
-                column: i
-            }
+            content: headers[i]
         });
         elements.push(headerShape);
     }
@@ -112,42 +137,20 @@ async function createTableStructure(position) {
                 fontFamily: 'arial',
                 textAlignVertical: 'middle'
             },
-            content: defaultValues[i],
-            metadata: {
-                type: 'cell',
-                row: 0,
-                column: i,
-                isCalculated: i === 3 // Points column
-            }
+            content: defaultValues[i]
         });
         elements.push(dataShape);
         
         // Store cells for calculations
         if (!cells[0]) cells[0] = {};
-        cells[0][i] = dataShape;
+        cells[0][i] = {
+            id: dataShape.id,
+            shape: dataShape,
+            row: 0,
+            column: i,
+            isCalculated: i === 3
+        };
     }
-
-    // Set up calculation listener
-    miro.board.ui.on('text:update', async (event) => {
-        const shape = event.items[0];
-        if (shape.metadata?.type === 'cell') {
-            const row = shape.metadata.row;
-            const col = shape.metadata.column;
-            
-            // If weight or score was updated
-            if (col === 1 || col === 2) {
-                const weight = parseFloat(cells[row][1].content) || 0;
-                const score = parseFloat(cells[row][2].content) || 1;
-                const points = (weight / 100) * score * 20;
-                
-                // Update points cell
-                await miro.board.updateShape({
-                    id: cells[row][3].id,
-                    content: points.toFixed(2)
-                });
-            }
-        }
-    });
 
     return {
         elements,
@@ -167,7 +170,6 @@ function calculateInitialPosition(viewport) {
 async function createBoardButtons(gridStructure) {
     const elements = [];
     
-    // Create "Add Row" button
     const addRowButton = await miro.board.createShape({
         type: 'shape',
         shape: 'rectangle',
@@ -179,12 +181,11 @@ async function createBoardButtons(gridStructure) {
             fillColor: BUTTON_CONFIG.fillColor,
             borderColor: 'transparent',
             cornerRadius: BUTTON_CONFIG.cornerRadius
-        },
-        metadata: {
-            type: 'button',
-            action: 'add-row'
         }
     });
+
+    // Register the button
+    SHAPE_REGISTRY.registerButton(addRowButton.id, 'addRow');
 
     const addRowText = await miro.board.createText({
         content: '+ Add Row',
@@ -223,25 +224,57 @@ async function setupBoardEventListeners(gridStructure, buttons) {
         if (selectedItems.length === 1) {
             const item = selectedItems[0];
             
-            if (item.metadata?.type === 'button') {
-                switch (item.metadata.action) {
-                    case 'add-row':
-                        // Visual feedback
-                        const originalColor = item.style.fillColor;
-                        item.style.fillColor = BUTTON_CONFIG.hoverColor;
-                        
-                        // Add new row
-                        await addNewRow(gridStructure);
-                        
-                        // Update button positions
-                        await buttons.updatePositions();
-                        
-                        // Reset color
-                        setTimeout(() => {
-                            item.style.fillColor = originalColor;
-                        }, 200);
-                        break;
+            if (SHAPE_REGISTRY.isButton(item.id)) {
+                const buttonType = SHAPE_REGISTRY.getButtonType(item.id);
+                if (buttonType === 'addRow') {
+                    // Visual feedback
+                    const originalColor = item.style.fillColor;
+                    await miro.board.updateShape({
+                        id: item.id,
+                        style: {
+                            fillColor: BUTTON_CONFIG.hoverColor
+                        }
+                    });
+                    
+                    await addNewRow(gridStructure);
+                    await buttons.updatePositions();
+                    
+                    setTimeout(async () => {
+                        await miro.board.updateShape({
+                            id: item.id,
+                            style: {
+                                fillColor: BUTTON_CONFIG.fillColor
+                            }
+                        });
+                    }, 200);
                 }
+            }
+        }
+    });
+
+    // Set up calculation listener
+    miro.board.ui.on('text:update', async (event) => {
+        const shape = event.items[0];
+        const cellPosition = SHAPE_REGISTRY.getCellPosition(shape.id);
+        
+        if (cellPosition) {
+            const { row, col } = cellPosition;
+            if (col === 1 || col === 2) {
+                const weightId = SHAPE_REGISTRY.cells[row][1];
+                const scoreId = SHAPE_REGISTRY.cells[row][2];
+                const pointsId = SHAPE_REGISTRY.cells[row][3];
+
+                const weightShape = await miro.board.getById(weightId);
+                const scoreShape = await miro.board.getById(scoreId);
+
+                const weight = parseFloat(weightShape.content) || 0;
+                const score = parseFloat(scoreShape.content) || 1;
+                const points = (weight / 100) * score * 20;
+
+                await miro.board.updateShape({
+                    id: pointsId,
+                    content: points.toFixed(2)
+                });
             }
         }
     });
@@ -270,16 +303,16 @@ async function addNewRow(gridStructure) {
                 fontFamily: 'arial',
                 textAlignVertical: 'middle'
             },
-            content: defaultValues[i],
-            metadata: {
-                type: 'cell',
-                row: GRID_CONFIG.rows,
-                column: i,
-                isCalculated: i === 3
-            }
+            content: defaultValues[i]
         });
         gridStructure.elements.push(cell);
-        rowCells[i] = cell;
+        rowCells[i] = {
+            id: cell.id,
+            shape: cell,
+            row: GRID_CONFIG.rows,
+            column: i,
+            isCalculated: i === 3
+        };
     }
     
     // Store cells for calculations
