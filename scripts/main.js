@@ -141,6 +141,9 @@ async function createTableStructure(position) {
         });
         elements.push(dataShape);
         
+        // Register cell in SHAPE_REGISTRY
+        SHAPE_REGISTRY.registerCell(dataShape.id, 0, i);
+        
         // Store cells for calculations
         if (!cells[0]) cells[0] = {};
         cells[0][i] = {
@@ -264,8 +267,7 @@ async function setupBoardEventListeners(gridStructure, buttons) {
                 const scoreId = SHAPE_REGISTRY.cells[row][2];
                 const pointsId = SHAPE_REGISTRY.cells[row][3];
 
-                const weightShape = await miro.board.getById(weightId);
-                const scoreShape = await miro.board.getById(scoreId);
+                const [weightShape, scoreShape] = await miro.board.getById([weightId, scoreId]);
 
                 const weight = parseFloat(weightShape.content) || 0;
                 const score = parseFloat(scoreShape.content) || 1;
@@ -306,6 +308,10 @@ async function addNewRow(gridStructure) {
             content: defaultValues[i]
         });
         gridStructure.elements.push(cell);
+        
+        // Register cell in SHAPE_REGISTRY
+        SHAPE_REGISTRY.registerCell(cell.id, GRID_CONFIG.rows, i);
+        
         rowCells[i] = {
             id: cell.id,
             shape: cell,
