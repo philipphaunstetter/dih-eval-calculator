@@ -8,5 +8,20 @@
   "scopes": [
     "boards:read",
     "boards:write"
-  ]
+  ],
+  "dependencies": {
+    "@mirohq/miro-api": "^2.0.0"
+  },
+  "capabilities": {
+    "canCreateContent": true
+  },
+  "extensionPoints": {
+    "toolbar": {
+      "icon": "toolbarIcon.svg",
+      "title": "Dynamic Table Calculator",
+      "toolbarItem": {
+        "observes": ["selection"]
+      }
+    }
+  }
 } 
