@@ -21,8 +21,23 @@ if (isInMiro) {
                 height: 600
             });
 
+            // Create the table as a shape inside the frame
+            const table = await miro.board.createShape({
+                content: '<div id="dynamicTable"></div>',
+                width: 750,
+                height: 550,
+                x: frame.x,
+                y: frame.y,
+                style: {
+                    backgroundColor: '#ffffff',
+                }
+            });
+
             // Initialize your table
             init();
+
+            // Update the frame viewport
+            await miro.board.viewport.zoomTo(frame);
         } catch (error) {
             console.error('Error creating table:', error);
         }
@@ -34,7 +49,7 @@ if (isInMiro) {
     });
 }
 
-function init() {
+async function init() {
     const calculationEngine = new CalculationEngine();
     const tableManager = new TableManager(calculationEngine);
     const columnManager = new ColumnManager(calculationEngine);
@@ -49,4 +64,9 @@ function init() {
 
     // Add initial row
     tableManager.addRow();
+
+    if (isInMiro) {
+        // If in Miro, we need to sync the table content
+        await miro.board.sync();
+    }
 } 
