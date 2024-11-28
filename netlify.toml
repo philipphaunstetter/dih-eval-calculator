@@ -1,0 +1,5 @@
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "frame-ancestors 'self' https://*.miro.com"
+    X-Frame-Options = "ALLOW-FROM https://*.miro.com" 
