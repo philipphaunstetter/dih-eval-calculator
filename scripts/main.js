@@ -37,7 +37,7 @@ if (isInMiro) {
                     y: startY,
                     width: cellWidth,
                     style: {
-                        fillColor: '#f5f5f5',
+                        fillColor: 'gray',
                         textAlign: 'center',
                         textAlignVertical: 'middle'
                     }
@@ -50,28 +50,40 @@ if (isInMiro) {
                 content: 'Click to edit',
                 x: startX,
                 y: rowY,
-                width: cellWidth
+                width: cellWidth,
+                style: {
+                    fillColor: 'light_yellow'
+                }
             });
 
             await miro.board.createStickyNote({
                 content: '0',
                 x: startX + cellWidth,
                 y: rowY,
-                width: cellWidth
+                width: cellWidth,
+                style: {
+                    fillColor: 'light_yellow'
+                }
             });
 
             await miro.board.createStickyNote({
                 content: '1',
                 x: startX + (2 * cellWidth),
                 y: rowY,
-                width: cellWidth
+                width: cellWidth,
+                style: {
+                    fillColor: 'light_yellow'
+                }
             });
 
             await miro.board.createStickyNote({
                 content: '0.00',
                 x: startX + (3 * cellWidth),
                 y: rowY,
-                width: cellWidth
+                width: cellWidth,
+                style: {
+                    fillColor: 'light_yellow'
+                }
             });
 
             // Create "Add Row" button as a sticky note
@@ -81,8 +93,8 @@ if (isInMiro) {
                 y: startY - cellHeight,
                 width: 100,
                 style: {
-                    fillColor: '#4262ff',
-                    textColor: '#ffffff'
+                    fillColor: 'blue',
+                    textColor: 'white'
                 }
             });
 
