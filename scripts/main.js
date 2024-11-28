@@ -14,30 +14,33 @@ if (isInMiro) {
     // Running in Miro - wait for icon click
     miro.board.ui.on('icon:click', async () => {
         try {
-            // Create a new frame for the table
-            const frame = await miro.board.createFrame({
-                title: 'Dynamic Table Calculator',
-                width: 800,
-                height: 600
-            });
+            // Get current viewport center
+            const viewport = await miro.board.viewport.get();
+            const center = {
+                x: viewport.x + viewport.width / 2,
+                y: viewport.y + viewport.height / 2
+            };
 
-            // Create the table as a shape inside the frame
+            // Create the table directly as a shape
             const table = await miro.board.createShape({
-                content: '<div id="dynamicTable"></div>',
-                width: 750,
-                height: 550,
-                x: frame.x,
-                y: frame.y,
+                type: 'table',
+                content: document.getElementById('dynamicTable').outerHTML,
+                width: 800,
+                height: 400,
+                x: center.x,
+                y: center.y,
                 style: {
                     backgroundColor: '#ffffff',
+                    borderWidth: 1,
+                    borderColor: '#ddd'
                 }
             });
 
             // Initialize your table
             init();
 
-            // Update the frame viewport
-            await miro.board.viewport.zoomTo(frame);
+            // Update the viewport to focus on the table
+            await miro.board.viewport.zoomTo(table);
         } catch (error) {
             console.error('Error creating table:', error);
         }
