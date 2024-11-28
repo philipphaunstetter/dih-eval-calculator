@@ -39,7 +39,7 @@ if (isInMiro) {
                     return itemBottom > max ? itemBottom : max;
                 }, viewport.y);
 
-                // Position the new table to the right or below existing content
+                // Position the new grid to the right or below existing content
                 if (rightmostItem + 900 < viewport.x + viewport.width) {
                     // Space available on the right
                     position = {
@@ -55,27 +55,16 @@ if (isInMiro) {
                 }
             }
 
-            // Create a frame at the found position
-            const frame = await miro.board.createFrame({
-                title: 'Dynamic Table Calculator',
-                x: position.x,
-                y: position.y,
-                width: 800,
-                height: 400,
-                style: {
-                    fillColor: '#ffffff'
-                }
-            });
-
-            // Create grid header
-            const headers = ['Definition', 'Weight (%)', 'Tool 1', 'Points'];
-            const cellWidth = 180;
-            const cellHeight = 40;
-
+            const calculationEngine = new CalculationEngine();
             const gridManager = new GridManager(calculationEngine);
             const toolManager = new ToolManager(calculationEngine);
 
             // Create header cells
+            const headers = ['Definition', 'Weight (%)', 'Tool 1', 'Points'];
+            const cellWidth = 180;
+            const cellHeight = 40;
+
+            // Create header row
             const headerRow = await createHeaderRow(headers, position.x, position.y, cellWidth, cellHeight);
             
             // Add initial data row
@@ -84,43 +73,70 @@ if (isInMiro) {
             // Add controls as separate shapes
             await createControls(position.x, position.y - cellHeight, gridManager, toolManager);
 
+            // Update viewport to show the created content
+            const allNewItems = await miro.board.get();
+            await miro.board.viewport.zoomTo(allNewItems);
+
         } catch (error) {
             console.error('Error creating grid:', error);
         }
     });
-} else {
-    // Running standalone - initialize immediately
-    document.addEventListener('DOMContentLoaded', () => {
-        init();
-    });
-}
-
-async function init() {
-    const calculationEngine = new CalculationEngine();
-    const tableManager = new TableManager(calculationEngine);
-    const columnManager = new ColumnManager(calculationEngine);
-
-    document.getElementById('addRow').addEventListener('click', () => {
-        tableManager.addRow();
-    });
-
-    document.getElementById('addTool').addEventListener('click', () => {
-        columnManager.addTool();
-    });
-
-    // Add initial row
-    tableManager.addRow();
-
-    if (isInMiro) {
-        // If in Miro, we need to sync the table content
-        await miro.board.sync();
-    }
 }
 
 async function createHeaderRow(headers, x, y, cellWidth, cellHeight) {
-    // Create header cells using shapes and text
+    const headerShapes = [];
+    for (let i = 0; i < headers.length; i++) {
+        const shape = await miro.board.createShape({
+            type: 'rectangle',
+            x: x + (i * cellWidth),
+            y: y,
+            width: cellWidth,
+            height: cellHeight,
+            style: {
+                fillColor: '#f5f5f5',
+                borderColor: '#ddd'
+            }
+        });
+        
+        const text = await miro.board.createText({
+            content: headers[i],
+            x: x + (i * cellWidth),
+            y: y,
+            width: cellWidth,
+            style: {
+                textAlign: 'center',
+                fontWeight: 'bold'
+            }
+        });
+        
+        headerShapes.push({ shape, text });
+    }
+    return headerShapes;
 }
 
 async function createControls(x, y, gridManager, toolManager) {
-    // Create control buttons as interactive shapes
+    const addRowButton = await miro.board.createShape({
+        type: 'rectangle',
+        x: x,
+        y: y,
+        width: 100,
+        height: 30,
+        style: {
+            fillColor: '#4262ff',
+            borderColor: '#2d4bc7'
+        }
+    });
+
+    await miro.board.createText({
+        content: 'Add Row',
+        x: x,
+        y: y,
+        width: 100,
+        style: {
+            textAlign: 'center',
+            color: '#ffffff'
+        }
+    });
+
+    addRowButton.onClick = () => gridManager.addRow(x, y + 40, 180, 40);
 } 
