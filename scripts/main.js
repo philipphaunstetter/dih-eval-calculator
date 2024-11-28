@@ -256,28 +256,43 @@ async function setupBoardEventListeners(gridStructure, buttons) {
     });
 
     // Set up calculation listener
-    miro.board.ui.on('text:update', async (event) => {
-        const shape = event.items[0];
-        const cellPosition = SHAPE_REGISTRY.getCellPosition(shape.id);
-        
-        if (cellPosition) {
-            const { row, col } = cellPosition;
-            if (col === 1 || col === 2) {
-                const weightId = SHAPE_REGISTRY.cells[row][1];
-                const scoreId = SHAPE_REGISTRY.cells[row][2];
-                const pointsId = SHAPE_REGISTRY.cells[row][3];
+    miro.board.ui.on('text:change', async (event) => {
+        try {
+            const shape = event.data;
+            const cellPosition = SHAPE_REGISTRY.getCellPosition(shape.id);
+            
+            if (cellPosition) {
+                const { row, col } = cellPosition;
+                console.log('Cell updated:', { row, col, content: shape.content });
 
-                const [weightShape, scoreShape] = await miro.board.getById([weightId, scoreId]);
+                // Only trigger calculation when weight or score is updated
+                if (col === 1 || col === 2) {
+                    // Get IDs for the cells we need
+                    const weightId = SHAPE_REGISTRY.cells[row][1];
+                    const scoreId = SHAPE_REGISTRY.cells[row][2];
+                    const pointsId = SHAPE_REGISTRY.cells[row][3];
 
-                const weight = parseFloat(weightShape.content) || 0;
-                const score = parseFloat(scoreShape.content) || 1;
-                const points = (weight / 100) * score * 20;
+                    // Get the current shapes directly
+                    const weightShape = await miro.board.getById(weightId);
+                    const scoreShape = await miro.board.getById(scoreId);
 
-                await miro.board.updateShape({
-                    id: pointsId,
-                    content: points.toFixed(2)
-                });
+                    // Parse values and ensure they're numbers
+                    const weight = Math.min(100, Math.max(0, parseFloat(weightShape.content) || 0));
+                    const score = Math.min(5, Math.max(1, parseFloat(scoreShape.content) || 1));
+
+                    // Calculate points
+                    const points = (weight / 100) * score * 20;
+                    console.log('Calculation:', { weight, score, points });
+
+                    // Update points cell
+                    await miro.board.updateShape({
+                        id: pointsId,
+                        content: points.toFixed(2)
+                    });
+                }
             }
+        } catch (error) {
+            console.error('Calculation error:', error);
         }
     });
 }
