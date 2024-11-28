@@ -21,19 +21,23 @@ if (isInMiro) {
                 y: viewport.y + viewport.height / 2
             };
 
-            // Create the table directly as a shape
-            const table = await miro.board.createShape({
-                type: 'table',
-                content: document.getElementById('dynamicTable').outerHTML,
-                width: 800,
-                height: 400,
+            // Create table data structure
+            const tableData = {
+                rows: 1,
+                columns: 4,
+                cells: [[
+                    { content: 'Definition' },
+                    { content: 'Weight (%)' },
+                    { content: 'Tool 1' },
+                    { content: 'Points' }
+                ]]
+            };
+
+            // Create the table using Miro's table widget
+            const table = await miro.board.createTable({
                 x: center.x,
                 y: center.y,
-                style: {
-                    backgroundColor: '#ffffff',
-                    borderWidth: 1,
-                    borderColor: '#ddd'
-                }
+                ...tableData
             });
 
             // Initialize your table
