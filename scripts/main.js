@@ -21,21 +21,12 @@ if (isInMiro) {
                 y: viewport.y + viewport.height / 2
             };
 
-            // Create a frame to contain our table
-            const frame = await miro.board.createFrame({
-                title: 'Dynamic Table Calculator',
-                x: center.x,
-                y: center.y,
-                width: 800,
-                height: 400
-            });
-
             // Create header cells
             const headers = ['Definition', 'Weight (%)', 'Tool 1', 'Points'];
             const cellWidth = 180;
             const cellHeight = 40;
-            const startX = frame.x - 350;
-            const startY = frame.y - 150;
+            const startX = center.x - (headers.length * cellWidth) / 2;
+            const startY = center.y - cellHeight;
 
             // Create header row
             for (let i = 0; i < headers.length; i++) {
@@ -77,10 +68,47 @@ if (isInMiro) {
                         borderColor: '#ddd'
                     }
                 });
+
+                // Add input fields for the first row
+                if (i === 0) {
+                    await miro.board.createText({
+                        content: 'Click to edit',
+                        x: startX + (i * cellWidth),
+                        y: rowY,
+                        width: cellWidth,
+                        style: { textAlign: 'left' }
+                    });
+                } else if (i === 1) {
+                    await miro.board.createText({
+                        content: '0',
+                        x: startX + (i * cellWidth),
+                        y: rowY,
+                        width: cellWidth,
+                        style: { textAlign: 'right' }
+                    });
+                } else if (i === 2) {
+                    await miro.board.createText({
+                        content: '1',
+                        x: startX + (i * cellWidth),
+                        y: rowY,
+                        width: cellWidth,
+                        style: { textAlign: 'right' }
+                    });
+                } else {
+                    await miro.board.createText({
+                        content: '0.00',
+                        x: startX + (i * cellWidth),
+                        y: rowY,
+                        width: cellWidth,
+                        style: { textAlign: 'right' }
+                    });
+                }
             }
 
-            // Update the viewport to focus on the frame
-            await miro.board.viewport.zoomTo(frame);
+            // Select all created elements to show them in viewport
+            const allItems = await miro.board.get();
+            await miro.board.viewport.zoomTo(allItems);
+
         } catch (error) {
             console.error('Error creating table:', error);
         }
