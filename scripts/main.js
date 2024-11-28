@@ -21,30 +21,66 @@ if (isInMiro) {
                 y: viewport.y + viewport.height / 2
             };
 
-            // Create table data structure
-            const tableData = {
-                rows: 1,
-                columns: 4,
-                cells: [[
-                    { content: 'Definition' },
-                    { content: 'Weight (%)' },
-                    { content: 'Tool 1' },
-                    { content: 'Points' }
-                ]]
-            };
-
-            // Create the table using Miro's table widget
-            const table = await miro.board.createTable({
+            // Create a frame to contain our table
+            const frame = await miro.board.createFrame({
+                title: 'Dynamic Table Calculator',
                 x: center.x,
                 y: center.y,
-                ...tableData
+                width: 800,
+                height: 400
             });
 
-            // Initialize your table
-            init();
+            // Create header cells
+            const headers = ['Definition', 'Weight (%)', 'Tool 1', 'Points'];
+            const cellWidth = 180;
+            const cellHeight = 40;
+            const startX = frame.x - 350;
+            const startY = frame.y - 150;
 
-            // Update the viewport to focus on the table
-            await miro.board.viewport.zoomTo(table);
+            // Create header row
+            for (let i = 0; i < headers.length; i++) {
+                await miro.board.createShape({
+                    type: 'rectangle',
+                    x: startX + (i * cellWidth),
+                    y: startY,
+                    width: cellWidth,
+                    height: cellHeight,
+                    style: {
+                        fillColor: '#f5f5f5',
+                        borderColor: '#ddd'
+                    }
+                });
+
+                await miro.board.createText({
+                    content: headers[i],
+                    x: startX + (i * cellWidth),
+                    y: startY,
+                    width: cellWidth,
+                    style: {
+                        textAlign: 'center',
+                        fontWeight: 'bold'
+                    }
+                });
+            }
+
+            // Create first data row
+            const rowY = startY + cellHeight;
+            for (let i = 0; i < headers.length; i++) {
+                await miro.board.createShape({
+                    type: 'rectangle',
+                    x: startX + (i * cellWidth),
+                    y: rowY,
+                    width: cellWidth,
+                    height: cellHeight,
+                    style: {
+                        fillColor: '#ffffff',
+                        borderColor: '#ddd'
+                    }
+                });
+            }
+
+            // Update the viewport to focus on the frame
+            await miro.board.viewport.zoomTo(frame);
         } catch (error) {
             console.error('Error creating table:', error);
         }
