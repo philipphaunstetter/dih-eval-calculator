@@ -1,0 +1,12 @@
+{
+  "name": "Dynamic Table Calculator",
+  "id": "com.hama.dynamic-table-calculator",
+  "version": "1.0.0",
+  "description": "Dynamic table with calculation capabilities",
+  "main": "index.html",
+  "permissions": [],
+  "scopes": [
+    "boards:read",
+    "boards:write"
+  ]
+} 

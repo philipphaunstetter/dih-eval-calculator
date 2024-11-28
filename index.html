@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dynamic Table Calculator</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div class="container">
+        <div class="table-controls">
+            <button id="addRow">Add Row</button>
+            <button id="addTool">Add Tool</button>
+        </div>
+        <div class="table-container">
+            <table id="dynamicTable">
+                <thead>
+                    <tr>
+                        <th>Definition</th>
+                        <th>Weight (%)</th>
+                        <th>Tool 1</th>
+                        <th>Points</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dynamic rows will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script src="scripts/tableManager.js"></script>
+    <script src="scripts/calculationEngine.js"></script>
+    <script src="scripts/columnManager.js"></script>
+    <script src="scripts/main.js"></script>
+</body>
+</html> 
