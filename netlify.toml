@@ -1,8 +1,8 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Frame-Options = "ALLOW-FROM https://*.miro.com"
-    Content-Security-Policy = "frame-ancestors https://*.miro.com; script-src https: 'unsafe-inline'; style-src https: 'unsafe-inline'; connect-src https://*.miro.com"
+    X-Frame-Options = "ALLOWALL"
+    Content-Security-Policy = "default-src *; frame-ancestors *; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline'; connect-src *"
     Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
-    Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept" 
+    Access-Control-Allow-Methods = "*"
+    Access-Control-Allow-Headers = "*" 
