@@ -38,13 +38,14 @@ if (isInMiro) {
         try {
             const viewport = await miro.board.viewport.get();
             const position = calculateInitialPosition(viewport);
-            GRID_CONFIG.startX = position.x;
-            GRID_CONFIG.startY = position.y;
             
-            const gridStructure = await createTableStructure(GRID_CONFIG);
+            // Create table structure with numeric coordinates
+            const gridStructure = await createTableStructure({
+                x: position.x,
+                y: position.y
+            });
+            
             const buttons = await createBoardButtons(gridStructure);
-            
-            // Set up event listeners for the entire board
             await setupBoardEventListeners(gridStructure, buttons);
             
             // Update viewport to show everything
@@ -59,15 +60,19 @@ if (isInMiro) {
 async function createTableStructure(position) {
     const headers = ['Definition', 'Weight (%)', 'Tool 1', 'Points'];
     const elements = [];
+    const cells = {}; // Store cells for calculations
+
+    // Ensure position values are numbers
+    const startX = Number(position.x);
+    const startY = Number(position.y);
 
     // Create header cells
     for (let i = 0; i < headers.length; i++) {
-        // Create header shape (rectangle)
         const headerShape = await miro.board.createShape({
             type: 'shape',
             shape: 'rectangle',
-            x: position.x + (i * (GRID_CONFIG.cellWidth + GRID_CONFIG.spacing)),
-            y: position.y,
+            x: startX + (i * (GRID_CONFIG.cellWidth + GRID_CONFIG.spacing)),
+            y: startY,
             width: GRID_CONFIG.cellWidth,
             height: GRID_CONFIG.cellHeight,
             style: {
@@ -78,20 +83,24 @@ async function createTableStructure(position) {
                 fontFamily: 'arial',
                 textAlignVertical: 'middle'
             },
-            content: headers[i]
+            content: headers[i],
+            metadata: {
+                type: 'header',
+                column: i
+            }
         });
         elements.push(headerShape);
     }
 
     // Create first data row
     const defaultValues = ['Click to edit', '0', '1', '0.00'];
-    const rowY = position.y + GRID_CONFIG.cellHeight + GRID_CONFIG.spacing;
+    const rowY = startY + GRID_CONFIG.cellHeight + GRID_CONFIG.spacing;
 
     for (let i = 0; i < defaultValues.length; i++) {
         const dataShape = await miro.board.createShape({
             type: 'shape',
             shape: 'rectangle',
-            x: position.x + (i * (GRID_CONFIG.cellWidth + GRID_CONFIG.spacing)),
+            x: startX + (i * (GRID_CONFIG.cellWidth + GRID_CONFIG.spacing)),
             y: rowY,
             width: GRID_CONFIG.cellWidth,
             height: GRID_CONFIG.cellHeight,
@@ -103,75 +112,55 @@ async function createTableStructure(position) {
                 fontFamily: 'arial',
                 textAlignVertical: 'middle'
             },
-            content: defaultValues[i]
+            content: defaultValues[i],
+            metadata: {
+                type: 'cell',
+                row: 0,
+                column: i,
+                isCalculated: i === 3 // Points column
+            }
         });
         elements.push(dataShape);
+        
+        // Store cells for calculations
+        if (!cells[0]) cells[0] = {};
+        cells[0][i] = dataShape;
     }
 
-    // Create "Add Row" button
-    const buttonWidth = 100;
-    const buttonY = position.y - GRID_CONFIG.cellHeight;
-
-    const addButton = await miro.board.createShape({
-        type: 'shape',
-        shape: 'round_rectangle',
-        x: position.x,
-        y: buttonY,
-        width: buttonWidth,
-        height: 40,
-        style: {
-            fillColor: '#4262FF',
-            borderColor: 'transparent',
-            textAlign: 'center',
-            fontSize: GRID_CONFIG.fontSize,
-            fontFamily: 'arial',
-            textAlignVertical: 'middle',
-            color: '#FFFFFF'
-        },
-        content: '+ Add Row'
-    });
-
-    elements.push(addButton);
-
-    // Set up click handler for Add Row button using Miro's events
-    miro.board.ui.on('selection:update', async (event) => {
-        const selectedItems = event.items;
-        if (selectedItems.length === 1 && selectedItems[0].id === addButton.id) {
-            const rowCount = (elements.length - 5) / 4; // Exclude header and button
-            const newRowY = rowY + (rowCount * (GRID_CONFIG.cellHeight + GRID_CONFIG.spacing));
+    // Set up calculation listener
+    miro.board.ui.on('text:update', async (event) => {
+        const shape = event.items[0];
+        if (shape.metadata?.type === 'cell') {
+            const row = shape.metadata.row;
+            const col = shape.metadata.column;
             
-            for (let i = 0; i < defaultValues.length; i++) {
-                const newCell = await miro.board.createShape({
-                    type: 'shape',
-                    shape: 'rectangle',
-                    x: position.x + (i * (GRID_CONFIG.cellWidth + GRID_CONFIG.spacing)),
-                    y: newRowY,
-                    width: GRID_CONFIG.cellWidth,
-                    height: GRID_CONFIG.cellHeight,
-                    style: {
-                        fillColor: '#FFFFFF',
-                        borderColor: '#D0D0D0',
-                        textAlign: i === 0 ? 'left' : 'right',
-                        fontSize: GRID_CONFIG.fontSize,
-                        fontFamily: 'arial',
-                        textAlignVertical: 'middle'
-                    },
-                    content: defaultValues[i]
+            // If weight or score was updated
+            if (col === 1 || col === 2) {
+                const weight = parseFloat(cells[row][1].content) || 0;
+                const score = parseFloat(cells[row][2].content) || 1;
+                const points = (weight / 100) * score * 20;
+                
+                // Update points cell
+                await miro.board.updateShape({
+                    id: cells[row][3].id,
+                    content: points.toFixed(2)
                 });
-                elements.push(newCell);
             }
         }
     });
 
-    // Update viewport to show all elements
-    await miro.board.viewport.zoomTo(elements);
-    return elements;
+    return {
+        elements,
+        startX,
+        startY,
+        cells
+    };
 }
 
 function calculateInitialPosition(viewport) {
     return {
-        x: viewport.x + viewport.width / 2,
-        y: viewport.y + viewport.height / 2
+        x: Number(viewport.x) + Number(viewport.width) / 2,
+        y: Number(viewport.y) + Number(viewport.height) / 2
     };
 }
 
@@ -263,6 +252,8 @@ async function addNewRow(gridStructure) {
     const newRowY = GRID_CONFIG.startY + 
                    (GRID_CONFIG.rows * (GRID_CONFIG.cellHeight + GRID_CONFIG.spacing));
     
+    const rowCells = {};
+    
     for (let i = 0; i < GRID_CONFIG.columns; i++) {
         const cell = await miro.board.createShape({
             type: 'shape',
@@ -279,10 +270,20 @@ async function addNewRow(gridStructure) {
                 fontFamily: 'arial',
                 textAlignVertical: 'middle'
             },
-            content: defaultValues[i]
+            content: defaultValues[i],
+            metadata: {
+                type: 'cell',
+                row: GRID_CONFIG.rows,
+                column: i,
+                isCalculated: i === 3
+            }
         });
         gridStructure.elements.push(cell);
+        rowCells[i] = cell;
     }
+    
+    // Store cells for calculations
+    gridStructure.cells[GRID_CONFIG.rows] = rowCells;
     
     GRID_CONFIG.rows++;
 } 
